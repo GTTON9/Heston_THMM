@@ -1,4 +1,4 @@
-# Regime-Switching Heston Model with Onsager–Machlup Functional
+# Regime--Switching Polynomial Diffusions via Topological Hidden Markov Model Inference using Onsager--Machlup Functionals for Asset Pricing
 
 This repository contains the codebase for studying regime identification in a Heston stochastic volatility model using both a classical Hidden Markov Model (HMM) approach and a path-based approach built on the Onsager–Machlup (O–M) functional.
 
