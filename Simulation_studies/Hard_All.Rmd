@@ -1,0 +1,201 @@
+---
+title: "Hard_All"
+output: html_document
+---
+
+```{r} 
+# --- Your parameter set ---
+
+Gamma <- matrix(c(0.99, 0.01,
+                  0.01, 0.99), 2, 2)
+
+N <- 252
+T <- 1
+
+S0 <- 100
+v0 <- 0.1
+
+n_days <- 252
+n_intraday <- 2400 
+
+mu    <- c(0.5, 0.5)
+kappa <- c(5, 1)
+theta <- c(0.1, 0.2)
+sigma <- c(0.05, 0.05)
+rho   <- c(-0.9, -0.9)
+
+# --- Build regime_params list in the format your simulate_heston_with_IV expects ---
+regime_params <- list(
+  list(mu = mu[1], kappa = kappa[1], theta = theta[1], sigma = sigma[1], rho = rho[1]),
+  list(mu = mu[2], kappa = kappa[2], theta = theta[2], sigma = sigma[2], rho = rho[2])
+)
+
+# --- Generate synthetic dataset ---
+dat <- simulate_heston_with_IV(
+  S0 = S0,
+  v0 = v0,
+  regime_params = regime_params,
+  Gamma = Gamma,
+  T = T,
+  N = n_days,
+  substeps = n_intraday,
+  H = 5/252,
+  r = 0.02,
+  strikes_relative = seq(0.85, 1.15, by = 0.01),  
+  method = "E",   
+  seed = 999
+)
+
+S_daily <- dat$S
+V_daily <- dat$v
+RV_V <- dat$RV_V
+RV_smooth <- lowess( RV_V, f = 0.03)$y
+True_State <- dat$regime
+
+```
+
+
+
+
+```{r}
+Hard_Path <- plot_price_and_variance_with_RV(S_daily, V_daily, RV_V, RV_smooth, True_State)
+ggsave(
+  filename = "Hard_Path.png",
+  plot = Hard_Path,          
+  width = 8, height = 5, units = "in",
+  dpi = 300
+)
+
+```
+
+
+```{r}
+combined_plot <- plot_viterbi_triple(
+  V_daily = V_daily,
+  RV_V = RV_V,
+  RV_smooth = RV_smooth,
+  nstates = nstates,
+  Gamma = Gamma,
+  kappa = kappa,
+  theta = theta,
+  sigma = sigma,
+  Reg_chain_year = True_State,
+  save_path = "Hard_std_Viterbi.png",
+  width = 18,
+  height = 6,
+  dpi = 300
+)
+combined_plot
+
+
+```
+
+
+
+```{r}
+results <- baum_welch_triple_analysis(
+  V_daily = V_daily,
+  RV_V = RV_V,
+  RV_smooth = RV_smooth,
+  Reg_chain_year = True_State,
+  date_sequence = date_sequence,
+  nstates = 2,
+  runs_V = 10,
+  runs_RV = 10,
+  runs_RV_smooth = 10,
+  dt = 1/252,
+  interval_step = 10,
+  save_viterbi_path = "Hard_std_BW.png",
+  save_ci_path = "Hard_std_CI.png",
+  width = 18,
+  height = 6,
+  dpi = 300
+)
+results$viterbi_plot
+results$ci_plot
+
+
+
+
+```
+
+```{r}
+batch_results <- calculate_expected_moves_batch(S_daily, V_daily)
+plot_expected_moves_with_shift(batch_results, H_days = 5)
+result_with_paths <- construct_linear_paths(batch_results, H = 5/252, dat)
+
+ggsave(
+  filename = "Hard_EV.png",
+  plot = Base_Path,          
+  width = 8, height = 5, units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+om_results <- plot_viterbi_om_triple(
+  V_daily = V_daily,
+  RV_V = RV_V,
+  RV_smooth = RV_smooth,
+  data_with_IV = dat,
+  regime_params = regime_params,
+  nstates = 2,
+  Gamma = Gamma,
+  Reg_chain_year = True_State,
+  H = 5/252,
+  lambda_om = 1.0,
+  normalize_method = "log",
+  save_path = "Hard_OM_Viterbi.png",
+  width = 18,
+  height = 6,
+  dpi = 300
+)
+
+# View the plot
+om_results$combined_plot
+```
+
+
+
+
+```{r}
+RV_smooth <- lowess( RV_V, f = 0.001)$y
+out_om <- om_triple_analysis(
+  S_daily = S_daily,
+  data_with_IV = dat,
+  V_daily = V_daily,
+  RV_V = RV_V,
+  RV_smooth = RV_smooth,
+  Reg_chain_year = True_State,
+  date_sequence = date_sequence,
+  nstates = 2,
+  runs_trueV = 10,
+  runs_RV = 10,
+  runs_smooth = 10,
+  H = 5/252,
+  lambda_fit = 1.0,
+  lambda_viterbi = 10.0,
+  sigma_penalty_trueV = 10.0,
+  sigma_penalty_RV = 10.0,
+  sigma_penalty_smooth = 10.0,
+  save_viterbi_path = "Hard_OM_BW.png",
+  save_ci_path = "Hard_OM_CI.png"
+)
+
+# View plots
+out_om$viterbi_plot
+out_om$ci_plot
+```
+
+
+
+
+
+
+
+
+
+
+
