@@ -1,12 +1,27 @@
-
-
 # ============================================================
-# Onsager-Machlup Functional using IV-based Linear Paths
+# construct_linear_paths
 # ============================================================
-
-# ------------------------------------------------------------
-# 1. 从IV数据构建线性路径 φ(t) = a + bt
-# ------------------------------------------------------------
+#' Construct Linear Variance Paths to Delta-Based Expected-Move Strikes
+#'
+#' @param result A data frame (or tibble) that contains at least:
+#'   - S: current price at each time index
+#'   - v: current variance at each time index
+#'   - K_upper: expected-move upper strike (e.g., delta=+0.1 call strike)
+#'   - K_lower: expected-move lower strike (e.g., delta=-0.1 put strike)
+#' @param H Time horizon in years (default is 5/252 for 5 trading days)
+#' @param m_grid A data frame that contains implied vol columns on a moneyness grid.
+#'   Column naming convention must match:
+#'   - CallIV_m{value} for call implied vols
+#'   - PutIV_m{value}  for put implied vols
+#'   Each row i corresponds to time i in `result`.
+#'
+#' @return The input `result` augmented with:
+#'   - sigma_upper_IV, sigma_lower_IV: matched implied vols
+#'   - v_start: starting variance (same as v)
+#'   - v_end_upper, v_end_lower: terminal variances implied by IV^2
+#'   - path_upper_a, path_upper_b: linear path parameters for upper scenario
+#'   - path_lower_a, path_lower_b: linear path parameters for lower scenario
+#'
 construct_linear_paths <- function(result, H = 5/252, m_grid) {
  
   m_upper <- result$K_upper / result$S  # 应该是 > 1 的值
@@ -53,15 +68,15 @@ construct_linear_paths <- function(result, H = 5/252, m_grid) {
   return(result)
 }
 
-# ------------------------------------------------------------
-# 2. 计算单条路径的 O-M Functional
-# ------------------------------------------------------------
+
+
+# ============================================================
+# calculate_OM_single
+# ============================================================
+
 calculate_OM_single <- function(a, b, kappa, theta, sigma, 
                                 H = 5/252, N = 100) {
-  # φ(τ) = a + b*τ, τ ∈ [0, H]
-  # L[φ] = (1/2) ∫₀ᴴ [(φ̇ - κ(θ-φ))² / (σ²φ)] dτ
-  
-  # 检查参数有效性
+
   if (is.na(a) || is.na(b) || a <= 0) {
     return(Inf)
   }
@@ -75,12 +90,11 @@ calculate_OM_single <- function(a, b, kappa, theta, sigma,
     tau_i <- tau[i]
     phi_i <- a + b * tau_i
     
-    # 避免非正值
     if (phi_i <= 1e-6) {
       return(Inf)
     }
     
-    phi_dot <- b  # 导数是常数
+    phi_dot <- b 
     drift <- kappa * (theta - phi_i)
     
     numerator <- (phi_dot - drift)^2
@@ -89,16 +103,14 @@ calculate_OM_single <- function(a, b, kappa, theta, sigma,
     f[i] <- numerator / denominator
   }
 
-  # 梯形积分
+
   integral <- (delta_tau / 2) * (f[1] + 2 * sum(f[2:N]) + f[N + 1])
   L <- 0.5 * integral
 
   return(L)
 }
 
-# ------------------------------------------------------------
-# 3. 批量计算所有路径和regime的 O-M Functional
-# ------------------------------------------------------------
+
 calculate_OM_batch <- function(result_with_paths,
                                regime_params,
                                H = 5/252,
@@ -110,8 +122,7 @@ calculate_OM_batch <- function(result_with_paths,
   cat("Time points:", T_periods, "\n")
   cat("Integration steps:", N, "\n")
   cat("Time window H:", H, "\n\n")
-  
-  # 预分配
+
   result_with_paths$OM_upper_R1 <- numeric(T_periods)
   result_with_paths$OM_upper_R2 <- numeric(T_periods)
   result_with_paths$OM_lower_R1 <- numeric(T_periods)
@@ -120,23 +131,21 @@ calculate_OM_batch <- function(result_with_paths,
   pb <- txtProgressBar(min = 0, max = T_periods, style = 3)
   
   for (t in 1:T_periods) {
-    # 提取路径参数
     a_upper <- result_with_paths$path_upper_a[t]
     b_upper <- result_with_paths$path_upper_b[t]
     a_lower <- result_with_paths$path_lower_a[t]
     b_lower <- result_with_paths$path_lower_b[t]
     
-    # Regime 1 参数
+
     kappa1 <- regime_params[[1]]$kappa
     theta1 <- regime_params[[1]]$theta
     sigma1 <- regime_params[[1]]$sigma
-    print(kappa1)
-    # Regime 2 参数
+
+
     kappa2 <- regime_params[[2]]$kappa
     theta2 <- regime_params[[2]]$theta
     sigma2 <- regime_params[[2]]$sigma
     
-    # 计算4个O-M值 (2条路径 × 2个regime)
     result_with_paths$OM_upper_R1[t] <- calculate_OM_single(
       a_upper, b_upper, kappa1, theta1, sigma1, H, N
     )
@@ -158,18 +167,6 @@ calculate_OM_batch <- function(result_with_paths,
   
   close(pb)
   
-  # 统计摘要
-  cat("\n\n=== O-M Functional Summary ===\n\n")
-  
-  cat("Regime 1 (Calm):\n")
-  cat("  Upper path - Mean:", sprintf("%.4f", mean(result_with_paths$OM_upper_R1, na.rm = TRUE)), "\n")
-  cat("  Lower path - Mean:", sprintf("%.4f", mean(result_with_paths$OM_lower_R1, na.rm = TRUE)), "\n\n")
-  
-  cat("Regime 2 (Turbulent):\n")
-  cat("  Upper path - Mean:", sprintf("%.4f", mean(result_with_paths$OM_upper_R2, na.rm = TRUE)), "\n")
-  cat("  Lower path - Mean:", sprintf("%.4f", mean(result_with_paths$OM_lower_R2, na.rm = TRUE)), "\n\n")
-  
-  # 检查Inf值
   n_inf <- sum(is.infinite(c(result_with_paths$OM_upper_R1, 
                              result_with_paths$OM_upper_R2,
                              result_with_paths$OM_lower_R1,
@@ -182,13 +179,11 @@ calculate_OM_batch <- function(result_with_paths,
   return(result_with_paths)
 }
 
-# ------------------------------------------------------------
-# 4. 可视化O-M Functional结果
-# ------------------------------------------------------------
+
 plot_OM_results <- function(result_complete) {
   par(mfrow = c(2, 2))
   
-  # Plot 1: Upper path O-M
+
   with(result_complete, {
     plot(time, OM_upper_R1, type = "l", col = "blue", lwd = 2,
          main = "O-M Functional: Upper Path (Call IV 103%)",
@@ -198,7 +193,7 @@ plot_OM_results <- function(result_complete) {
            col = c("blue", "red"), lwd = 2, cex = 0.3)
   })
   
-  # Plot 2: Lower path O-M
+
   with(result_complete, {
     plot(time, OM_lower_R1, type = "l", col = "blue", lwd = 2,
          main = "O-M Functional: Lower Path (Put IV 97%)",
@@ -208,7 +203,7 @@ plot_OM_results <- function(result_complete) {
            col = c("blue", "red"), lwd = 2, cex = 0.3)
   })
   
-  # Plot 3: O-M差异 (upper)
+
   with(result_complete, {
     diff_upper <- OM_upper_R1 - OM_upper_R2
     plot(time, diff_upper, type = "l", col = "darkgreen", lwd = 2,
@@ -217,7 +212,7 @@ plot_OM_results <- function(result_complete) {
     abline(h = 0, lty = 2, col = "gray")
   })
   
-  # Plot 4: True regime
+
   with(result_complete, {
     plot(regime, type = 's', col = 'black', lwd = 2,
          main = "True Regime",

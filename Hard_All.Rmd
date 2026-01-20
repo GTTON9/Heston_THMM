@@ -2,7 +2,25 @@
 title: "Hard_All"
 output: html_document
 ---
+```{r}
+# install.packages("NMOF")
+# install.packages("derivmkts")
+# install.packages("iterators")
+# install.packages("parallel")
+```
 
+```{r}
+source("Model_Simulation.R")
+source("Visualization/Plot_Simulation.R")
+source("std_source.R")
+source("OM_source.R")
+library(NMOF)
+library(derivmkts)
+
+```
+
+
+Parameter Setting & Data Simulation
 ```{r} 
 # --- Your parameter set ---
 
@@ -14,7 +32,7 @@ T <- 1
 
 S0 <- 100
 v0 <- 0.1
-
+nstates <- 2
 n_days <- 252
 n_intraday <- 2400 
 
@@ -56,11 +74,11 @@ True_State <- dat$regime
 
 
 
-
+Data Visualization
 ```{r}
 Hard_Path <- plot_price_and_variance_with_RV(S_daily, V_daily, RV_V, RV_smooth, True_State)
 ggsave(
-  filename = "Hard_Path.png",
+  filename = "Figure/Hard_Path.png",
   plot = Hard_Path,          
   width = 8, height = 5, units = "in",
   dpi = 300
@@ -68,7 +86,7 @@ ggsave(
 
 ```
 
-
+Standard Viterbi with True Parameter
 ```{r}
 combined_plot <- plot_viterbi_triple(
   V_daily = V_daily,
@@ -80,7 +98,7 @@ combined_plot <- plot_viterbi_triple(
   theta = theta,
   sigma = sigma,
   Reg_chain_year = True_State,
-  save_path = "Hard_std_Viterbi.png",
+  save_path = "Figure/Hard_std_Viterbi.png",
   width = 18,
   height = 6,
   dpi = 300
@@ -91,7 +109,7 @@ combined_plot
 ```
 
 
-
+Standard Baum-Welch Parameter Estimation
 ```{r}
 results <- baum_welch_triple_analysis(
   V_daily = V_daily,
@@ -105,8 +123,8 @@ results <- baum_welch_triple_analysis(
   runs_RV_smooth = 10,
   dt = 1/252,
   interval_step = 10,
-  save_viterbi_path = "Hard_std_BW.png",
-  save_ci_path = "Hard_std_CI.png",
+  save_viterbi_path = "Figure/Hard_std_BW.png",
+  save_ci_path = "Figure/Hard_std_CI.png",
   width = 18,
   height = 6,
   dpi = 300
@@ -119,21 +137,23 @@ results$ci_plot
 
 ```
 
+Expected Move
 ```{r}
 batch_results <- calculate_expected_moves_batch(S_daily, V_daily)
-plot_expected_moves_with_shift(batch_results, H_days = 5)
+EM <- plot_expected_moves_with_shift(batch_results, H_days = 5)
 result_with_paths <- construct_linear_paths(batch_results, H = 5/252, dat)
 
 ggsave(
-  filename = "Hard_EV.png",
-  plot = Base_Path,          
+  filename = "Figure/Hard_EV.png",
+  plot = EM,          
   width = 8, height = 5, units = "in",
   dpi = 300
 )
+EM
 ```
 
 
-
+OM-Functional Viterbi with True Parameter
 ```{r}
 om_results <- plot_viterbi_om_triple(
   V_daily = V_daily,
@@ -147,7 +167,7 @@ om_results <- plot_viterbi_om_triple(
   H = 5/252,
   lambda_om = 1.0,
   normalize_method = "log",
-  save_path = "Hard_OM_Viterbi.png",
+  save_path = "Figure/Hard_OM_Viterbi.png",
   width = 18,
   height = 6,
   dpi = 300
@@ -159,7 +179,7 @@ om_results$combined_plot
 
 
 
-
+OM-Functional Parameter Estimation
 ```{r}
 RV_smooth <- lowess( RV_V, f = 0.001)$y
 out_om <- om_triple_analysis(
@@ -180,8 +200,8 @@ out_om <- om_triple_analysis(
   sigma_penalty_trueV = 10.0,
   sigma_penalty_RV = 10.0,
   sigma_penalty_smooth = 10.0,
-  save_viterbi_path = "Hard_OM_BW.png",
-  save_ci_path = "Hard_OM_CI.png"
+  save_viterbi_path = "Figure/Hard_OM_BW.png",
+  save_ci_path = "Figure/Hard_OM_CI.png"
 )
 
 # View plots

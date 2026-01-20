@@ -90,7 +90,7 @@ simulate_heston_with_IV <- function(S0 = 100,
                                     Gamma,
                                     T = 1,
                                     N = 252,
-                                    substeps = 1000,   # <- 关键：每个交易日的日内步数
+                                    substeps = 1000,  
                                     H = 5/252,
                                     r = 0.02,
                                     strikes_relative = seq(0.85, 1.15, by = 0.001),
@@ -100,7 +100,6 @@ simulate_heston_with_IV <- function(S0 = 100,
   library(NMOF)
   library(derivmkts)
   
-  # ---- 1) Regime chain (same logic as your simulate_Reg) ----
   set.seed(seed)
   Reg_chain <- numeric(N)
   Reg_chain[1] <- 0
@@ -108,7 +107,6 @@ simulate_heston_with_IV <- function(S0 = 100,
     Reg_chain[t] <- sample(c(0, 1), 1, prob = Gamma[Reg_chain[t-1] + 1, ])
   }
   
-  # ---- 2) Build Reg_param matrix in the SAME format as simulate_heston expects ----
   Reg_param <- rbind(
     c(regime_params[[1]]$mu, regime_params[[1]]$kappa, regime_params[[1]]$theta,
       regime_params[[1]]$sigma, regime_params[[1]]$rho),
@@ -116,9 +114,6 @@ simulate_heston_with_IV <- function(S0 = 100,
       regime_params[[2]]$sigma, regime_params[[2]]$rho)
   )
   
-  # ---- 3) Generate intraday paths using simulate_heston (THIS ensures equality) ----
-  # Important: use the same seed here? If you want EXACT match with a standalone call,
-  # pass the same seed and do NOT call any RNG between the two calls.
   sim <- simulate_heston(
     S0 = S0, v0 = v0,
     Reg_series = Reg_chain,

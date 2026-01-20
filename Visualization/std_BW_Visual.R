@@ -9,36 +9,23 @@ plot_cir_confidence_improved <- function(true_vol,
   library(ggplot2)
   library(dplyr)
   
-  # -------------------------
-  # 0) Align lengths
-  # -------------------------
   min_length <- min(length(true_vol), length(states_estimate), length(Reg_chain))
   true_vol <- true_vol[1:min_length]
   states_estimate <- states_estimate[1:min_length]
   Reg_chain <- Reg_chain[1:min_length]
   time_points <- 1:min_length
   
-  # -------------------------
-  # 1) V grid for density calculation
-  # -------------------------
   V_min <- max(0.0001, min(true_vol, na.rm = TRUE) * 0.1)
   V_max <- max(true_vol, na.rm = TRUE) * 3
   V_grid <- seq(V_min, V_max, length.out = 500)
   dV <- diff(V_grid)[1]
   
-  # -------------------------
-  # 2) Find regime change points (based on states_estimate)
-  # -------------------------
   changepoints <- c(1, which(diff(states_estimate) != 0) + 1, length(states_estimate) + 1)
   
   all_ci_data <- data.frame()
   
-  # 固定预测步长：interval_step
   k_fixed <- interval_step * dt
   
-  # -------------------------
-  # 3) Compute rolling CIs for each regime segment
-  # -------------------------
   for (seg in 1:(length(changepoints) - 1)) {
     start_idx <- changepoints[seg]
     end_idx <- changepoints[seg + 1] - 1
@@ -50,11 +37,9 @@ plot_cir_confidence_improved <- function(true_vol,
     theta_reg <- param$theta[current_regime]
     sigma_reg <- param$sigma[current_regime]
     
-    # 在该段内：每隔 interval_step 计算一次 CI
     t_seq <- seq(start_idx + interval_step, end_idx, by = interval_step)
     
     for (t_idx in t_seq) {
-      # ✅ rolling reference: 用前 interval_step 的真实值作为条件
       v_ref <- true_vol[t_idx - interval_step]
       
       log_densities <- sapply(V_grid, function(v) {
@@ -130,10 +115,8 @@ plot_cir_confidence_improved <- function(true_vol,
   y_min <- min(c(vol_data$variance, all_ci_data$lower), na.rm = TRUE) * 0.95
   y_max <- max(c(vol_data$variance, all_ci_data$upper), na.rm = TRUE) * 1.05
   
-  # accuracy
   accuracy <- mean(state_data$Estimated_State == as.numeric(as.character(state_data$True_State))) * 100
   
-  # Create segments for variance line colored by regime estimate
   vol_segments <- data.frame()
   for (i in 1:(nrow(vol_data) - 1)) {
     vol_segments <- rbind(vol_segments, data.frame(
@@ -144,10 +127,7 @@ plot_cir_confidence_improved <- function(true_vol,
       regime = vol_data$regime_estimate[i]
     ))
   }
-  
-  # -------------------------
-  # 5) Plot
-  # -------------------------
+
   p <- ggplot() +
     geom_rect(
       data = regime_background,
@@ -196,23 +176,21 @@ plot_cir_confidence_improved <- function(true_vol,
     ) +
     theme_minimal() +
     theme(
-      plot.title = element_text(hjust = 0.5, size = 14, face = "bold"), # 加大标题
+      plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
       plot.subtitle = element_text(hjust = 0.5, size = 12, face = "bold"),
       
       # 核心修改部分：
-      legend.position = "bottom",          # 图例置于底部
-      legend.box = "vertical",             # 强制图例组垂直堆叠，确保分成三排
-      legend.margin = margin(t = 10),      # 增加图例与主图的间距
-      legend.spacing.y = unit(0.2, "cm"),  # 增加排与排之间的垂直间距
+      legend.position = "bottom",         
+      legend.box = "vertical",             
+      legend.margin = margin(t = 10),      
+      legend.spacing.y = unit(0.2, "cm"), 
       
-      legend.text = element_text(size = 12),    # 加大图例文字
-      legend.title = element_text(size = 11, face = "bold"), # 加大图例标题
-      legend.key.size = unit(1.2, "lines")      # 稍微加大图例图标大小，防止文字挤压
+      legend.text = element_text(size = 12),   
+      legend.title = element_text(size = 11, face = "bold"), 
+      legend.key.size = unit(1.2, "lines")     
     ) +
     guides(
-      # 通过 ncol = 1 确保每个图例内部是纵向的，
-      # 配合 theme 里的 legend.box = "vertical" 即可实现三排布局
-      fill = guide_legend(order = 1, ncol = 2),   # True Regime 如果选项多可以用 ncol=2
+      fill = guide_legend(order = 1, ncol = 2),   
       color = guide_legend(order = 2, ncol = 1),  
       shape = guide_legend(order = 3, ncol = 1)
     )
@@ -222,7 +200,8 @@ plot_cir_confidence_improved <- function(true_vol,
 
 
 
-# ===== 更新的 Baum-Welch Triple Analysis =====
+
+
 baum_welch_triple_analysis <- function(V_daily, RV_V, RV_smooth, 
                                        Reg_chain_year, 
                                        date_sequence,
@@ -270,8 +249,8 @@ baum_welch_triple_analysis <- function(V_daily, RV_V, RV_smooth,
   
   cat("  Real Variance - Done\n\n")
   
-  # ===== 2. Realized Variance (RV_V) =====
-  cat("Processing Realized Variance...\n")
+  # ===== 2. Realized Volatility (RV_V) =====
+  cat("Processing Realized Volatility...\n")
   
   my_data_df <- data.frame(Date = date_sequence, Var = RV_V)
   series_control <- Heston_set_controls( 
@@ -290,10 +269,10 @@ baum_welch_triple_analysis <- function(V_daily, RV_V, RV_smooth,
   BW_all_param[[2]] <- param_RV
   all_states_estimate[[2]] <- final_model$decoding
   
-  cat("  Realized Variance - Done\n\n")
+  cat("  Realized Volatility - Done\n\n")
   
   # ===== 3. Smoothed RV =====
-  cat("Processing Smoothed Realized Variance...\n")
+  cat("Processing Smoothed Realized Volatility...\n")
   
   my_data_df <- data.frame(Date = date_sequence, Var = RV_smooth)
   series_control <- Heston_set_controls( 
@@ -425,7 +404,7 @@ baum_welch_triple_analysis <- function(V_daily, RV_V, RV_smooth,
   cat("Creating Viterbi plots...\n")
   
   p1_vit <- plot_single_viterbi(V_daily, param_true_V, Reg_chain_year, "Real Variance")
-  p2_vit <- plot_single_viterbi(RV_V, param_RV, Reg_chain_year, "Realized Variance")
+  p2_vit <- plot_single_viterbi(RV_V, param_RV, Reg_chain_year, "Realized Volatility")
   p3_vit <- plot_single_viterbi(RV_smooth, param_RV_smooth, Reg_chain_year, "Smoothed RV")
   
   combined_viterbi_plot <- p1_vit | p2_vit | p3_vit
@@ -460,7 +439,7 @@ baum_welch_triple_analysis <- function(V_daily, RV_V, RV_smooth,
     Reg_chain = Reg_chain_year,
     dt = dt,
     interval_step = interval_step,
-    subtitle_text = "Realized Variance"
+    subtitle_text = "Realized Volatility"
   )
   
   result3 <- plot_cir_confidence_improved(

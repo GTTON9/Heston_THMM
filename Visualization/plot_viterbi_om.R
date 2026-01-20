@@ -247,7 +247,7 @@ plot_viterbi_om <- function(batch_results_complete,
       om_plot = om_plot,
       states_estimate = states_estimate,
       posterior = posterior,
-      om_probabilities = om_contrib_data  # 返回概率数据
+      om_probabilities = om_contrib_data  
     ))
     
   } else {

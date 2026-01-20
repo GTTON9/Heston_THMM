@@ -1,6 +1,8 @@
 
-source("Heston_get_init.R")
-source("fHMM_model.R")
+source("Heston_Standard/Heston_get_init.R")
+source("Heston_Standard/fHMM_model.R")
+library(iterators)
+library(parallel)
 #' Model fitting
 #'
 #' @description

@@ -32,9 +32,7 @@ forward_filter_om_pure <- function(OM_upper,
   cat("=================================================================\n")
   cat("Pure O-M Forward Filter (THMM)\n")
   cat("=================================================================\n\n")
-  
-  # ===== Step 1: Compute Total O-M Functional for Each Path =====
-  # This is L_i[φ_k] in PDF formula
+
   
   cat("Computing O-M functionals...\n")
   
@@ -63,10 +61,7 @@ forward_filter_om_pure <- function(OM_upper,
   cat("    Mean:", mean(L_total), "\n")
   cat("    Range: [", min(L_total), ",", max(L_total), "]\n\n")
   
-  # ===== Step 2: Initial Distribution =====
-  # π_i = stationary distribution
-  
-  delta <- oeli::stationary_distribution(Gamma)
+  delta <- oeli::stationary_distribution(Gamma) # initial distribution
   
   cat("Initial distribution (π):\n")
   for (i in 1:nstates) {
@@ -74,27 +69,13 @@ forward_filter_om_pure <- function(OM_upper,
   }
   cat("\n")
   
-  # ===== Step 3: Forward Algorithm (Log-Space) =====
-  
-  # log_alpha[i, t] = log P(φ_1,...,φ_t, s_t = i)
   log_alpha <- matrix(-Inf, nstates, T)
-  
-  # Initialization (k=1)
-  # Formula: α_1(i) = π_i × exp(-L_i[φ_1])
-  # Log form: log α_1(i) = log π_i - L_i[φ_1]
+
   
   for (i in 1:nstates) {
     log_alpha[i, 1] <- log(delta[i]) - L_total[1, i]
   }
   
-  cat("Initialization:\n")
-  cat("  log_alpha[, 1] =", log_alpha[, 1], "\n\n")
-  
-  # Recursion (k = 2, ..., T)
-  # Formula: α_k(j) = [Σ_i α_{k-1}(i) P_ij] × exp(-L_j[φ_k])
-  # Log form: log α_k(j) = log[Σ_i exp(log α_{k-1}(i) + log P_ij)] - L_j[φ_k]
-  
-  cat("Forward recursion...\n")
   pb <- txtProgressBar(min = 2, max = T, style = 3)
   
   log_Gamma <- log(Gamma)
@@ -102,18 +83,12 @@ forward_filter_om_pure <- function(OM_upper,
   for (t in 2:T) {
     for (j in 1:nstates) {
       
-      # Compute Σ_i α_{k-1}(i) P_ij in log space
-      # log Σ_i exp(x_i) = logsumexp(x)
-      
       log_terms <- numeric(nstates)
       for (i in 1:nstates) {
         log_terms[i] <- log_alpha[i, t-1] + log_Gamma[i, j]
       }
-      
-      # logsumexp for numerical stability
       log_sum <- logsumexp(log_terms)
       
-      # Add emission probability: exp(-L_j[φ_k])
       log_alpha[j, t] <- log_sum - L_total[t, j]
     }
     
@@ -122,15 +97,11 @@ forward_filter_om_pure <- function(OM_upper,
   
   close(pb)
   
-  # ===== Step 4: Compute Posterior Probabilities =====
-  # P(s_t = i | φ_{1:t}) = α_t(i) / Σ_j α_t(j)
-  
   cat("\n\nComputing posterior probabilities...\n")
   
   posterior <- matrix(0, nstates, T)
   
   for (t in 1:T) {
-    # Normalize: P(s_t = i | φ_{1:t}) ∝ α_t(i)
     log_norm <- logsumexp(log_alpha[, t])
     
     for (i in 1:nstates) {
@@ -138,12 +109,8 @@ forward_filter_om_pure <- function(OM_upper,
     }
   }
   
-  # ===== Step 5: State Estimation =====
-  # Most likely state at each time: argmax_i P(s_t = i | φ_{1:t})
-  
   states_estimate <- apply(posterior, 2, which.max)
   
-  # ===== Step 6: Summary Statistics =====
   
   transitions <- diff(states_estimate)
   n_switches <- sum(transitions != 0)
@@ -196,7 +163,7 @@ forward_filter_om_pure <- function(OM_upper,
 }
 
 
-#' Helper: Log-Sum-Exp for Numerical Stability
+
 logsumexp <- function(x) {
   max_x <- max(x)
   max_x + log(sum(exp(x - max_x)))
@@ -217,7 +184,6 @@ viterbi_om_pure <- function(OM_upper,
   T_len <- nrow(OM_upper)
   log_Gamma <- log(Gamma)
   
-  # ===== Step 1: 预处理 O-M 成本 (Emission costs) =====
   L_total <- matrix(0, T_len, nstates)
   for (t in 1:T_len) {
     for (i in 1:nstates) {
@@ -228,20 +194,14 @@ viterbi_om_pure <- function(OM_upper,
     }
   }
   
-  # ===== Step 2: 初始化 Viterbi 矩阵 =====
-  # v[i, t] 存储到时刻 t 状态为 i 的最大累积对数概率
   v <- matrix(-Inf, nstates, T_len)
-  # psi[i, t] 存储回溯路径（哪个前置状态导致了当前的最大概率）
   psi <- matrix(0, nstates, T_len)
-  
-  # 初始分布 (Stationary)
   delta <- oeli::stationary_distribution(Gamma)
   
   for (i in 1:nstates) {
     v[i, 1] <- log(delta[i]) - L_total[1, i]
   }
   
-  # ===== Step 3: 前向递归 (Recursion) =====
   for (t in 2:T_len) {
     for (j in 1:nstates) {
       
@@ -253,13 +213,10 @@ viterbi_om_pure <- function(OM_upper,
     }
   }
   
-  # ===== Step 4: 回溯路径 (Backward Tracing) =====
   states_viterbi <- numeric(T_len)
-  
-  # 终点时刻的最优状态
   states_viterbi[T_len] <- which.max(v[, T_len])
   
-  # 从 T-1 到 1 回溯
+ 
   for (t in (T_len - 1):1) {
     states_viterbi[t] <- psi[states_viterbi[t + 1], t + 1]
   }
@@ -415,24 +372,3 @@ plot_viterbi_om_path <- function(batch_results_complete,
     accuracy = mean(viterbi_path == as.numeric(as.character(state_data$True_State)))
   ))
 }
-
-# ================================================================
-# Usage Example
-# ================================================================
-
-plot_result <- plot_viterbi_om(
-  batch_results_complete = batch_results_complete,
-  nstates = 2,
-  Gamma = Gamma,
-  kappa = c(10, 5),
-  theta = c(0.1, 0.5),
-  sigma = c(0.1, 0.1),
-  Reg_chain = Reg_chain_year,
-  lambda_om = 1,
-  normalize_method = "log",
-  show_om_contribution = TRUE
-)
-
-
-
-

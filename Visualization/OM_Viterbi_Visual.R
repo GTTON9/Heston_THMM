@@ -182,7 +182,7 @@ plot_viterbi_om_triple <- function(V_daily, RV_V, RV_smooth,
   
   # Generate three plots
   result1 <- plot_single_om_viterbi(V_daily, "Real Variance")
-  result2 <- plot_single_om_viterbi(RV_V, "Realized Variance")
+  result2 <- plot_single_om_viterbi(RV_V, "Realized Volatility")
   result3 <- plot_single_om_viterbi(RV_smooth, "Smoothed RV")
   
   # Combine plots

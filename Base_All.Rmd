@@ -2,15 +2,24 @@
 title: "Base_All"
 output: html_document
 ---
-
 ```{r}
-source("Model_Simulation.R")
-
+# install.packages("NMOF")
+# install.packages("derivmkts")
+# install.packages("iterators")
+# install.packages("parallel")
 ```
 
 ```{r}
-# --- Your parameter set ---
+source("Model_Simulation.R")
+source("Visualization/Plot_Simulation.R")
+source("std_source.R")
+source("OM_source.R")
+library(NMOF)
+library(derivmkts)
 
+```
+Parameter Setting & Data Simulation
+```{r}
 Gamma <- matrix(c(0.99, 0.01,
                   0.01, 0.99), 2, 2)
 
@@ -22,21 +31,22 @@ v0 <- 0.1
 
 n_days <- 252
 n_intraday <- 2400 
-nstate <- 2
+nstates <- 2
 
 mu <- c(0.3, 0.3)
 kappa <- c(10, 5)
 theta <- c(0.1, 0.5)
-sigma <- c(0.3, 0.5)
+sigma <- c(0.05, 0.05)
 rho <- c(-0.9, -0.9)
 
-# --- Build regime_params list in the format your simulate_heston_with_IV expects ---
 regime_params <- list(
   list(mu = mu[1], kappa = kappa[1], theta = theta[1], sigma = sigma[1], rho = rho[1]),
   list(mu = mu[2], kappa = kappa[2], theta = theta[2], sigma = sigma[2], rho = rho[2])
 )
 
-# --- Generate synthetic dataset ---
+start_date <- as.Date("2024-01-01")
+date_sequence <- seq(from = start_date, by = "day", length.out = N)
+
 dat <- simulate_heston_with_IV(
   S0 = S0,
   v0 = v0,
@@ -61,11 +71,11 @@ True_State <- dat$regime
 ```
 
 
-
+Data Visualization
 ```{r}
 Base_Path <- plot_price_and_variance_with_RV(S_daily, V_daily, RV_V, RV_smooth, True_State)
 ggsave(
-  filename = "Base_Path.png",
+  filename = "Figure/Base_Path.png",
   plot = Base_Path,          
   width = 8, height = 5, units = "in",
   dpi = 300
@@ -73,7 +83,7 @@ ggsave(
 
 ```
 
-
+Standard Viterbi with True Parameter
 ```{r}
 combined_plot <- plot_viterbi_triple(
   V_daily = V_daily,
@@ -85,7 +95,7 @@ combined_plot <- plot_viterbi_triple(
   theta = theta,
   sigma = sigma,
   Reg_chain_year = True_State,
-  save_path = "Base_std_Viterbi.png",
+  save_path = "Figure/Base_std_Viterbi.png",
   width = 18,
   height = 6,
   dpi = 300
@@ -96,7 +106,7 @@ combined_plot
 ```
 
 
-
+Standard Baum-Welch Parameter Estimation
 ```{r}
 results <- baum_welch_triple_analysis(
   V_daily = V_daily,
@@ -110,8 +120,8 @@ results <- baum_welch_triple_analysis(
   runs_RV_smooth = 10,
   dt = 1/252,
   interval_step = 10,
-  save_viterbi_path = "Base_std_BW.png",
-  save_ci_path = "Base_std_CI.png",
+  save_viterbi_path = "Figure/Base_std_BW.png",
+  save_ci_path = "Figure/Base_std_CI.png",
   width = 18,
   height = 6,
   dpi = 300
@@ -124,21 +134,22 @@ results$ci_plot
 
 ```
 
-
+Expected Move
 ```{r}
 batch_results <- calculate_expected_moves_batch(S_daily, V_daily)
 EM <- plot_expected_moves_with_shift(batch_results, H_days = 5)
 result_with_paths <- construct_linear_paths(batch_results, H = 5/252, dat)
 
 ggsave(
-  filename = "Base_EV.png",
-  plot = Base_Path,          
+  filename = "Figure/Base_EV.png",
+  plot = EM,          
   width = 8, height = 5, units = "in",
   dpi = 300
 )
+EM
 ```
 
-
+OM-Functional Viterbi with True Parameter
 ```{r}
 om_results <- plot_viterbi_om_triple(
   V_daily = V_daily,
@@ -152,7 +163,7 @@ om_results <- plot_viterbi_om_triple(
   H = 5/252,
   lambda_om = 1.0,
   normalize_method = "log",
-  save_path = "Base_OM_Viterbi.png",
+  save_path = "Figure/Base_OM_Viterbi.png",
   width = 18,
   height = 6,
   dpi = 300
@@ -163,8 +174,7 @@ om_results$combined_plot
 ```
 
 
-
-
+OM-Functional Parameter Estimation
 ```{r}
 RV_smooth <- lowess( RV_V, f = 0.05)$y
 out_om <- om_triple_analysis(
@@ -185,8 +195,8 @@ out_om <- om_triple_analysis(
   sigma_penalty_trueV = 10.0,
   sigma_penalty_RV = 10.0,
   sigma_penalty_smooth = 10.0,
-  save_viterbi_path = "Base_OM_BW.png",
-  save_ci_path = "Base_OM_CI.png"
+  save_viterbi_path = "Figure/Base_OM_BW.png",
+  save_ci_path = "Figure/Base_OM_CI.png"
 )
 
 # View plots

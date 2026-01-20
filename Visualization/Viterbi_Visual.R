@@ -55,7 +55,7 @@ plot_viterbi <- function(V_simulated, nstates, Gamma, kappa, theta, sigma, Reg_c
   states_estimate <- prob$states_estimate
   a <- prob$posterior
 
-  time_index <- 1:ncol(a) # 假设时间索引从 1 到 N
+  time_index <- 1:ncol(a)
   
   prob_data <- data.frame(
     Time = time_index,
@@ -100,7 +100,7 @@ plot <- ggplot() +
         xmax = Time_End, 
         ymin = -0.05, 
         ymax = 1.05,
-        fill = True_State # True_State 映射到背景色图例
+        fill = True_State 
       ),
       alpha = 0.2, 
       inherit.aes = FALSE
@@ -113,13 +113,12 @@ plot <- ggplot() +
       linewidth = 0.9
     ) +
     
-    # III. 机制估计点 (现在使用 shape 映射来创建图例)
     geom_point(
       data = state_data,
-      # 映射 shape = "Estimated State" 以创建图例
+
       aes(x = Time, y = Estimated_State, shape = "Estimated State"), 
       size = 1,
-      color = "black", # 强制颜色为黑色
+      color = "black",
       alpha = 0.8
     ) +
     
@@ -136,9 +135,8 @@ plot <- ggplot() +
                name = "Forward Probability" 
     )+
     scale_shape_manual(
-      # 定义 'Estimated State' 对应的形状为 'x' (pch=4)
       values = c("Estimated State" = 1), 
-      name = "Regime Estimate" # 新的图例标题
+      name = "Regime Estimate" 
     ) +
     scale_y_continuous(
       breaks = c(0, 0.5, 1),
@@ -215,7 +213,7 @@ plot_cir_confidence_simple <- function(true_vol,
       t_idx <- start_idx + j - 1
       if (t_idx > end_idx) break
       
-      k <- j * dt # time steps from the regime change point
+      k <- j * dt 
       
       log_densities <- sapply(V_grid, function(v) {
         ln_d_Heston(V_t = v_ref, 
@@ -246,7 +244,7 @@ plot_cir_confidence_simple <- function(true_vol,
       mean_val <- V_grid[idx_mean]
       upper_val <- V_grid[idx_upper]
       
-      # 验证合理性
+      
       if (!is.na(lower_val) && !is.na(upper_val) && 
           lower_val > 0 && upper_val > lower_val) {
         
@@ -267,23 +265,22 @@ plot_cir_confidence_simple <- function(true_vol,
     return(NULL)
   }
   
-  # 准备绘图数据
+
   vol_data <- data.frame(
     time = time_points, 
     true = true_vol
   )
   
-  cat("\n置信区间样本:\n")
   print(head(all_ci_data, 10))
   
-  # 绘图
+
   p <- ggplot() +
-    # 真实波动率线
+
     geom_line(data = vol_data, 
               aes(x = time, y = true), 
               color = "black", size = 0.5, alpha = 0.8) +
     
-    # 置信区间点
+
     geom_point(data = all_ci_data, 
                aes(x = time, y = lower, fill = factor(regime)), 
                shape = 21, size = 0.7, alpha = 0.7, stroke = 1) +
@@ -294,7 +291,7 @@ plot_cir_confidence_simple <- function(true_vol,
                aes(x = time, y = upper, fill = factor(regime)), 
                shape = 21, size = 0.7, alpha = 0.7, stroke = 1) +
     
-    # 连接上下界的竖线
+
     geom_segment(data = all_ci_data,
                  aes(x = time, xend = time, y = lower, yend = upper, 
                      color = factor(regime)),

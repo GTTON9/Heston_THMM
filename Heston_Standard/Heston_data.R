@@ -1,5 +1,5 @@
 
-source("read_data.R")
+source("Heston_Standard/read_data.R")
 #' Constructor of an \code{Heston_data} object
 #'
 #' @description

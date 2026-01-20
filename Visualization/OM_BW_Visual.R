@@ -725,7 +725,7 @@ om_triple_analysis <- function(S_daily,
     vol_series = RV_V,
     runs = runs_RV,
     sigma_penalty = sigma_penalty_RV,
-    label = "Realized Variance"
+    label = "Realized Volatility"
   )
   
   res_smooth <- process_single(

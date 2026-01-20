@@ -1,26 +1,22 @@
+# ================================================================
+# calculate_expected_move
+# ================================================================
 #' Calculate Expected Move Strikes using Black-Scholes Delta
-#' 
 #' This function finds the strike prices K_upper and K_lower such that
 #' the Black-Scholes delta equals 0.1 (for calls) and -0.1 (for puts)
-#' 
+
 #' @param S Current asset price
 #' @param v Current variance (volatility^2)
 #' @param r Risk-free rate (annualized)
 #' @param H Time to maturity in years (default = 5/252 for 5 trading days)
 #' @param strike_step Grid search step size (default = 1.0)
 #' @param search_range_pct Percentage range to search around S (default = 0.3 = 30%)
-#' 
+
 #' @return A list containing:
 #'   - K_upper: Strike price with delta = 0.1 (call)
 #'   - K_lower: Strike price with delta = -0.1 (put)
 #'   - delta_upper: Actual delta at K_upper
 #'   - delta_lower: Actual delta at K_lower
-#'   
-#' @examples
-#' result <- calculate_expected_move(S = 100, v = 0.04, r = 0.02)
-#' cat("Upper strike:", result$K_upper, "\n")
-#' cat("Lower strike:", result$K_lower, "\n")
-
 calculate_expected_move <- function(S, v, r = 0.02, H = 5/252, 
                                     strike_step = 1.0, 
                                     search_range_pct = 0.3) {
@@ -108,16 +104,15 @@ calculate_expected_move <- function(S, v, r = 0.02, H = 5/252,
 
 
 # ================================================================
-# BATCH PROCESSING FUNCTION
+# calculate_expected_moves_batch
 # ================================================================
-
 #' Calculate Expected Moves for Multiple Time Points
-#' 
+
 #' @param S_vec Vector of asset prices at each time point
 #' @param v_vec Vector of variances at each time point
 #' @param r Risk-free rate
 #' @param H Time to maturity (default = 5/252)
-#' 
+
 #' @return A data frame with columns:
 #'   - time: Time index
 #'   - S: Asset price
