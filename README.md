@@ -17,7 +17,7 @@ To replicate the results reported in the study, use the following entry-point sc
 - **`Base_All`**  
   Executes all baseline experiments, serving as a reference to establish standard performance metrics under well-separated regimes.
 
-- **`rHard_All`**  
+- **`Hard_All`**  
   Executes the challenging-case experiments, designed to assess model robustness under adverse conditions such as elevated noise levels or rapid regime switching.
 
 ---
