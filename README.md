@@ -6,7 +6,8 @@ The project focuses on comparing standard likelihood-based inference with path-w
 
 ## Project structure (following `{fHMM}`)
 
-This repository follows the overall structure and conventions of the `{fHMM}` R package by Oelschläger (e.g., code in `R/`, documentation in `man/`, long-form examples in `vignettes/`, tests in `tests/`, compiled code in `src/`, and package-side resources in `inst/`). :contentReference[oaicite:0]{index=0}
+This repository follows the overall structure and conventions of the `{fHMM}` R package by Oelschläger.
+[fHMM R package](https://github.com/loelschlaeger/fHMM)
 
 ---
 
